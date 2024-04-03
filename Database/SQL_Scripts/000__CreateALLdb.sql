@@ -1,4 +1,7 @@
-USE casedb; /* UPDATED 2024-02-26 */
+USE casedb; /* UPDATED 2023-11-21 */
+
+-- DROP DATABASE IF EXISTS `casedb`;       /* These would not work other than for root or other able to create schemas */
+-- CREATE DATABASE IF NOT EXISTS `casedb`; /* These would not work other than for root or other able to create schemas */
 
 DROP TABLE IF EXISTS log_event;
 DROP TABLE IF EXISTS log_list;
@@ -26,8 +29,13 @@ DROP TABLE IF EXISTS User;
 DROP TABLE IF EXISTS Department;
 DROP TABLE IF EXISTS GlobalSetting;
 
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
-/* ------------------------------------------------------ */
+USE casedb; /* UPDATED 2023-11-05 */
 
 /* PROCEDURES */
 DROP PROCEDURE IF EXISTS abortAllocation;
@@ -43,9 +51,13 @@ DROP PROCEDURE IF EXISTS test_copyAllocRound;
 /* FUNCTIONS */
 DROP FUNCTION IF EXISTS getMissingItemAmount;
 
-/* ------------------------------------------------------ */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
-/* UPDATED 2023-11-21 */
+USE casedb; /* UPDATED 2024-01-24 */
 
 /* --- 01 CREATE TABLES --- */
 
@@ -189,6 +201,8 @@ CREATE TABLE IF NOT EXISTS AllocRound (
     userId          INTEGER         NOT NULL,
     description     VARCHAR(16000)  NOT NULL,
     lastModified    TIMESTAMP       NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    lastCalcSuccs   TIMESTAMP       DEFAULT NULL,
+    lastCalcFail    TIMESTAMP       DEFAULT NULL,
     isAllocated     BOOLEAN     DEFAULT 0,
     processOn       BOOLEAN     DEFAULT 0,
     abortProcess    BOOLEAN     DEFAULT 0,
@@ -376,51 +390,56 @@ CREATE TABLE IF NOT EXISTS log_event (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
-/* ------------------------------------------------------ */
+USE casedb; /* UPDATED 2023-11-05 */
 
 /* PROCEDURES */
-/* DELIMITER is explained here, just look at first two examples: https:__mariadb.com/kb/en/delimiters/ */
+/* DELIMITER is explained here, just look at first two examples: https://mariadb.com/kb/en/delimiters/ */
 
 -- -----------------------------------------------------------
 -- Copy Alloc Round. Copies the allocRound subjects, but not yet the SubjectEquipment
 DELIMITER //
-CREATE OR REPLACE PROCEDURE copyAllocRound(IN allocRid1 INT,
-                                        IN allocRoundName2 VARCHAR(255),
-                                        IN allocRoundDescription2 VARCHAR(10000),
+CREATE OR REPLACE PROCEDURE copyAllocRound(IN allocRid1 INT, 
+                                        IN allocRoundName2 VARCHAR(255), 
+                                        IN allocRoundDescription2 VARCHAR(16000),
                                         IN creatorUserId2 INT,
                                         OUT allocRid2 INT)
 BEGIN
     INSERT INTO AllocRound
-        (`date`, name, isSeasonAlloc, userId,
-        description, lastModified, isAllocated,
+        (`date`, name, isSeasonAlloc, userId, 
+        description, lastModified, isAllocated, 
             processOn, abortProcess, requireReset)
     VALUES(
-        NULL, allocRoundName2, 0, creatorUserId2,
+        NULL, allocRoundName2, 0, creatorUserId2, 
         allocRoundDescription2, current_timestamp(), 0,
             0, 0, 0);
 
     SET allocRid2 = last_insert_id();
 
-    INSERT INTO Subject
-                    (name,     groupSize,     groupCount,    sessionLength,
+    INSERT INTO Subject 
+                    (name,     groupSize,     groupCount,    sessionLength, 
                        sessionCount,    area,    programId,    spaceTypeId, allocRoundId)
-
-            SELECT s1.name, s1.groupSize, s1.groupCount, s1.sessionLength,
+    
+            SELECT s1.name, s1.groupSize, s1.groupCount, s1.sessionLength, 
                     s1.sessionCount, s1.area, s1.programId, s1.spaceTypeId, allocRid2
             FROM Subject s1
                 WHERE (s1.allocRoundId = allocRid1);
-
-    INSERT INTO SubjectEquipment
+            
+    INSERT INTO SubjectEquipment  
                     (subjectId, equipmentId, priority, obligatory)
             SELECT s2.id, se1.equipmentId, se1.priority, se1.obligatory
-
-            FROM Subject s2 JOIN Subject s1 ON s2.name = s1.name
-                 JOIN SubjectEquipment se1 ON s1.id = se1.subjectId
+            
+            FROM Subject s2 JOIN Subject s1 ON s2.name = s1.name 
+                 JOIN SubjectEquipment se1 ON s1.id = se1.subjectId 
                  WHERE s2.allocRoundId = allocRid2 AND s1.allocRoundId = allocRid1;
-
+    
     SHOW ERRORS;
-
+    
 END;
 //
 DELIMITER ;
@@ -429,29 +448,27 @@ DELIMITER //
 CREATE OR REPLACE PROCEDURE test_copyAllocRound()
 BEGIN
     DECLARE allocRid               INTEGER        DEFAULT  10004;
-    DECLARE random                 DOUBLE         DEFAULT RAND();
+    DECLARE random                 DOUBLE         DEFAULT RAND(); 
     DECLARE allocRoundName         VARCHAR(255)   DEFAULT   CONCAT('Copied test alloc round',random);
-    DECLARE allocRoundDescription  VARCHAR(10000) DEFAULT   'Alloc round based on 10004';
+    DECLARE allocRoundDescription  VARCHAR(16000) DEFAULT   'Alloc round based on 10004';
     DECLARE creatorUserId          INTEGER        DEFAULT   201;
     DECLARE allocRid2              INTEGER        DEFAULT -1;
 
-    CALL copyAllocRound(allocRid,
-                        allocRoundName,
+    CALL copyAllocRound(allocRid, 
+                        allocRoundName, 
                         allocRoundDescription,
                         creatorUserId,
                         allocRid2);
     SELECT allocRid2;
-
+                
 END;
 //
 DELIMITER ;
 
 -- -----------------------------------------------------------
 
-
 /* --- Procedure 1: Conditional database logger, used by other prodedures below --- */
-
-DELIMITER __
+DELIMITER //
 
 CREATE PROCEDURE IF NOT EXISTS LogAllocation(logId INT, stage VARCHAR(255), status VARCHAR(255), msg VARCHAR(16000))
 BEGIN
@@ -463,7 +480,7 @@ BEGIN
 		INSERT INTO log_event(log_id, stage, status, information) VALUES(logId, stage, status, msg);
 	END IF;
 END;
-__
+//
 DELIMITER ;
 
 /* allocRid is now used for the frontend sent allocRoundId, to make it stand out e.g. in:
@@ -472,7 +489,7 @@ DELIMITER ;
 
 
 /* --- Procedure 2: PRIORITIZE SUBJECTS -  TO ALLOCATION ORDER --- */
-DELIMITER __
+DELIMITER //
 
 CREATE OR REPLACE PROCEDURE prioritizeSubjects(allocRid INT, priority_option INT, logId INT)
 BEGIN
@@ -515,11 +532,11 @@ BEGIN
 	CALL LogAllocation(logId, "Prioritization", "OK", CONCAT("Priority option: ", priority_option, " completed."));
 
 END;
-__
+//
 DELIMITER ;
 
 /* --- Procedure 3: SET SUITABLE ROOMS -  Find which spaces could be suitable for this subject id - ALLOCATION --- */
-DELIMITER __
+DELIMITER //
 
 CREATE OR REPLACE PROCEDURE setSuitableRooms(allocRid INT, subId INT)
 BEGIN
@@ -532,11 +549,11 @@ BEGIN
 		AND sp.inUse=1
 		;
 END;
-__
+//
 DELIMITER ;
 
 /* --- Procedure 4: allocated space(s) to satisfy the subject's needs - until all needed hours have been allocated --- */
-DELIMITER __
+DELIMITER //
 
 CREATE PROCEDURE allocateSpace(allocRid INT, subId INT, logId INT)
 BEGIN
@@ -550,7 +567,7 @@ BEGIN
 
 	SET sessions := (SELECT groupCount * sessionCount FROM Subject WHERE id = subId); -- total amount of sessions in subject
    	SET allocated := 0; -- How many sessions allocated
-   	SET sessionSeconds := (SELECT TIME_TO_SEC(sessionLength) FROM Subject WHERE id = subId); -- Session length in seconds
+   	SET sessionSeconds := (SELECT CEILING(TIME_TO_SEC(sessionLength)) FROM Subject WHERE id = subId); -- Session length in seconds
 
 	SET spaceTo := ( -- to check if subject can be allocated
         	SELECT ass.spaceId FROM AllocSubjectSuitableSpace ass
@@ -611,8 +628,8 @@ BEGIN
 			AND alpa.missingItems = 0
 			AND alpa.allocRoundId = allocRid
 			GROUP BY alpa.spaceId
-			ORDER BY ((TIME_TO_SEC(TIMEDIFF(spa.availableTO, spa.availableFrom)) *5) -
-			(SELECT IFNULL((SUM(TIME_TO_SEC(totalTime))), 0) FROM AllocSpace asp WHERE asp.allocRoundId = allocRid AND spaceId = alpa.spaceId)) DESC
+			ORDER BY (CEILING((TIME_TO_SEC(TIMEDIFF(spa.availableTO, spa.availableFrom))) *5) -
+			(SELECT IFNULL((SUM(CEILING(TIME_TO_SEC(totalTime)))), 0) FROM AllocSpace asp WHERE asp.allocRoundId = allocRid AND spaceId = alpa.spaceId)) DESC
 			LIMIT 1
 		);
    		INSERT INTO AllocSpace (subjectId, allocRoundId, spaceId, totalTime)
@@ -631,12 +648,12 @@ BEGIN
 		CALL LogAllocation(logId, "Space-allocation", "Warning", CONCAT("Subject : ", subId, " - Add ", sessions - allocated, " to space: ", spaceTo, " - All suitable spaces are full"));
    	END IF;
 END;
-__
+//
 DELIMITER ;
 
 
 /* --- Procedure 5 - A: START ALLOCATION --- */
-DELIMITER __
+DELIMITER //
 
 CREATE OR REPLACE PROCEDURE startAllocation(allocRid INT)
 BEGIN
@@ -671,7 +688,7 @@ BEGIN
 		GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errno = MYSQL_ERRNO, @text = MESSAGE_TEXT;
 		SET @full_error = CONCAT("Error: ", @errno, " (", @sqlstate, "): ", @text);
 		CALL LogAllocation(logId, "Allocation", "Error", (SELECT @full_error));
-		UPDATE AllocRound SET abortProcess = 0, processOn = 0 WHERE id = allocRid;
+		UPDATE AllocRound SET abortProcess = 0, processOn = 0, lastCalcFail = current_timestamp() WHERE id = allocRid;
 		RESIGNAL SET MESSAGE_TEXT = @full_error;
 	END;
 
@@ -681,6 +698,7 @@ BEGIN
 		GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errno = MYSQL_ERRNO, @text = MESSAGE_TEXT;
 		SET @full_error = CONCAT("Error: ", @errno, " (", @sqlstate, "): ", @text);
 		CALL LogAllocation(logId, "Allocation", "Error", (SELECT @full_error));
+		UPDATE AllocRound SET lastCalcFail = current_timestamp() WHERE id = allocRid;
 		RESIGNAL SET MESSAGE_TEXT = @full_error;
 	END;
 
@@ -690,6 +708,7 @@ BEGIN
 			SET errors := errors +1;
 			GET DIAGNOSTICS CONDITION 1 @sqlstate = RETURNED_SQLSTATE, @errno = MYSQL_ERRNO, @text = MESSAGE_TEXT;
 			SET @full_error = CONCAT("ERROR ", @errno, " (", @sqlstate, "): ", @text);
+			UPDATE AllocRound SET lastCalcFail = current_timestamp() WHERE id = allocRid;
 			CALL LogAllocation(logId, "Allocation", "Error", (SELECT @full_error));
 		END;
 
@@ -707,18 +726,21 @@ BEGIN
 	IF is_allocated = 1 THEN
 		SET @message_text = CONCAT("The allocRound: ", allocRid, " is already allocated.");
 		SIGNAL alreadyAllocated SET MESSAGE_TEXT = @message_text, MYSQL_ERRNO = 1192;
+		UPDATE AllocRound SET lastCalcFail = current_timestamp() WHERE id = allocRid;
 	END IF;
 	-- IF AllocRound require reset before allocation
 	SET reset_required = (SELECT requireReset FROM AllocRound WHERE id = allocRid);
 	IF reset_required = TRUE THEN
 		SET @message_text = CONCAT("The allocRound: ", allocRid, " require reset before allocation.");
 		SIGNAL require_reset SET MESSAGE_TEXT = @message_text, MYSQL_ERRNO = 1192;
+		UPDATE AllocRound SET lastCalcFail = current_timestamp() WHERE id = allocRid;
 	END IF;
 	-- IF Allocation already running with allocRound id raise error
 	SET procedure_active = (SELECT processOn FROM AllocRound WHERE id = allocRid);
 	IF procedure_active = 1 THEN
 		SET @message_text = CONCAT("The allocation with allocRound:", allocRid, " is already running.");
 		SIGNAL processBusy SET MESSAGE_TEXT = @message_text, MYSQL_ERRNO = 1192;
+		UPDATE AllocRound SET lastCalcFail = current_timestamp() WHERE id = allocRid;
 	END IF;
 	-- SET procedure running
 	UPDATE AllocRound SET processOn = 1 WHERE id = allocRid;
@@ -763,17 +785,17 @@ BEGIN
 	UPDATE AllocRound SET isAllocated = 1 WHERE id = allocRid;
 	CALL LogAllocation(logId, "Allocation", "End", CONCAT("Errors: ", (SELECT errors)));
 
-	UPDATE AllocRound SET processOn = 0 WHERE id = allocRid;
+	UPDATE AllocRound SET processOn = 0, lastCalcSuccs = current_timestamp() WHERE id = allocRid;
 
 END;
-__
+//
 DELIMITER ;
-
+                       /* ---   TIMESPAN 75:59:59:999   vs.  TIME?  23:59:59:999 --- */
 
 /* --- PROCEDURE 6 - B: Abort Allocation --- */
-DELIMITER __
+DELIMITER //
 
-CREATE PROCEDURE IF NOT EXISTS abortAllocation(allocRid INT)
+CREATE PROCEDURE IF NOT EXISTS abortAllocation(allocRid INT)	
 BEGIN
 	DECLARE inProgress BOOLEAN DEFAULT FALSE;
 
@@ -785,12 +807,12 @@ BEGIN
 	END IF;
 
 END;
-__
+//
 DELIMITER ;
 
 
 /* --- Procedure 7 - C: RESET ALLOCATION, will nullify all calculations/allocations for this alloc R(ound) Id --- */
-DELIMITER __
+DELIMITER //
 
 CREATE PROCEDURE IF NOT EXISTS  resetAllocation(allocRid INTEGER)
 BEGIN
@@ -820,7 +842,7 @@ BEGIN
     END IF;
     UPDATE AllocRound SET isAllocated = 0, requireReset = FALSE WHERE id = allocRid;
 END;
-__
+//
 DELIMITER ;
 
 
@@ -828,7 +850,7 @@ DELIMITER ;
 /* FUNCTIONS */
 
 /* Function 8 (well 1-7 were actually procedures, but similar) - Get missing equipment(subject) count in space */
-DELIMITER __
+DELIMITER //
 
 CREATE FUNCTION IF NOT EXISTS getMissingItemAmount(subId INT, spaId INT) RETURNS INT
 NOT DETERMINISTIC
@@ -844,11 +866,16 @@ RETURN (
 		) a
 );
 END;
-__
+//
 DELIMITER ;
 
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
-/* ------------------------------------------------------ */
+USE casedb; /* UPDATED 2024-02-26 */
 
 /* INSERTS */
 /* --- Insert: GlobalSettings --- */
@@ -1152,7 +1179,7 @@ INSERT INTO Subject(name, groupSize, groupCount, sessionLength, sessionCount, ar
     ('Äänenkäyttö ja huolto / korrepetitiokoulutus', 4, 3, '01:00:00', 1, 10, 3015, 5004, 10004),
     ('Prima vista / korrepetitiokoulutus', 2, 6, '01:00:00', 1, 15, 3015, 5004, 10004),
     ('Musiikinhistorian lukupiiri', 10, 1, '01:00:00', 1 , 15, 3019, 5002, 10004),
-     ('Tohtoriseminaari (sävellys)', 17, 1, '02:00:00', 1, 30, 3019, 5002, 10003),
+    ('Tohtoriseminaari (sävellys)', 17, 1, '02:00:00', 1, 30, 3019, 5002, 10003),
     ('Musiikkiteknologian perusteet', 15, 1, '01:00:00', 1, 30, 3020, 5004, 10002),
     ('Johtamisen pedagogiikka -luentosarja', 10, 1, '02:00:00', 1, 20, 3018, 5002, 10001);
 
@@ -1284,3 +1311,10 @@ INSERT INTO AllocCurrentRoundUser(allocRoundId, userId) VALUES
 
 /* --- INSERT: LOG TYPE --- */
 INSERT INTO log_type(name) VALUES ("allocation");
+
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+

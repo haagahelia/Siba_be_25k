@@ -1,0 +1,29 @@
+### Remember to select the proper rest client environment
+
+### Reset database in admin env before performing other tests
+GET {{host}}/resetDatabase
+Authorization: Basic {{token}}
+
+
+### Initial setup: Set the nextId after Testdata Reset
+### It should come after the last id in test data
+@nextId=10005
+
+### 0. Reset Allocation (Clear the allocation simulation results)
+POST {{host}}/allocation/reset
+Authorization: Basic {{token}}
+Content-Type: application/json
+
+{
+  "allocRoundId":10004
+}
+
+
+### 1. Start Allocation (Run the allocation simulation)
+POST {{host}}/allocation/start
+Authorization: Basic {{token}}
+Content-Type: application/json
+
+{
+  "allocRoundId":10004
+}

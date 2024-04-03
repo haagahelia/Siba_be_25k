@@ -48,6 +48,11 @@ export interface Program {
   name: string;
 }
 
+export interface ProgramWithDepartmentId {
+  name: string;
+  departmentId: number;
+}
+
 export interface ProgramAllocation extends Program {
   rooms: AllocatedRoomsByProgramType;
   subjects: AllocatedSubjectsByProgramType;

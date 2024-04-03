@@ -1,6 +1,8 @@
 import {
   createIdValidatorChain,
+  createMultiNameValidatorChain,
   validateIdObl,
+  validateMultiNameObl,
   validateNameObl,
 } from './index.js';
 
@@ -13,3 +15,8 @@ export const validateProgramPost = [
 ];
 
 export const validateProgramPut = [...validateProgramPost, ...validateIdObl];
+
+export const validateProgramMultiPost = [
+  ...validateMultiNameObl,
+  ...createMultiNameValidatorChain('department'),
+];

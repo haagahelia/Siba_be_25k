@@ -1,17 +1,16 @@
-version: '3'
+version: "3.8"     # Docker compose: https://docs.docker.com/compose/  YAML: https://yaml.org/spec/1.2.2/
+name: db_project
 
 services:
-  mariadock:
-    image: mariadb:latest
-    container_name: mariadock
-    environment:
-      - MARIADB_USER=alternate_user
-      - MARIADB_PASSWORD=alternate_user_psw
-      - MARIADB_ROOT_PASSWORD=root_psw
+  mariadb_service:
+    image: mariadb:11.1.2-jammy    # OR:   mariadb:latest
+    container_name: mariadb_container
+    env_file: .env
     ports:
-      - "3306:3306"
+      - '${DB_PORT}:3306'
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - ./Database/SQL_Scripts/000__CreateALLdb.sql:/docker-entrypoint-initdb.d/init.sql
+      - mariadb_volume:/var/lib/mysql
 
 volumes:
-  mariadb_data:
+  mariadb_volume:

@@ -11,9 +11,11 @@ import {
   requestErrorHandler,
   successHandler,
 } from '../responseHandler/index.js';
+import { ProgramWithDepartmentId } from '../types/custom.js';
 import logger from '../utils/logger.js';
 import { validate, validateIdObl } from '../validationHandler/index.js';
 import {
+  validateProgramMultiPost,
   validateProgramPost,
   validateProgramPut,
 } from '../validationHandler/program.js';
@@ -171,6 +173,56 @@ program.post(
       })
       .catch((error) => {
         dbErrorHandler(req, res, error, 'Oops! Create failed - Program');
+      });
+  },
+);
+
+program.post(
+  '/multi',
+  validateProgramMultiPost,
+  [authenticator, admin, planner, roleChecker, validate],
+  async (req: Request, res: Response) => {
+    console.log(req.body);
+    const programData: ProgramWithDepartmentId[] = [];
+
+    for (const program of req.body) {
+      const [department] = await db_knex('Department')
+        .select('id')
+        .where('name', program.department);
+
+      if (!department) {
+        return requestErrorHandler(
+          req,
+          res,
+          `'Program ${department.departmentName} not found`,
+        );
+      }
+
+      programData.push({
+        name: program.name,
+        departmentId: department.id,
+      });
+    }
+
+    console.log(programData);
+
+    db_knex('Program')
+      .insert(programData)
+      .then((result) => {
+        if (result.length === 0) {
+          requestErrorHandler(req, res, 'Nothing to insert');
+        } else {
+          successHandler(
+            req,
+            res,
+            { insertId: result }, // Assuming auto-incremented ID
+            'Create successful - Programs',
+          );
+          logger.info('Programs created');
+        }
+      })
+      .catch((error) => {
+        dbErrorHandler(req, res, error, 'Oops! Create failed - Programs');
       });
   },
 );

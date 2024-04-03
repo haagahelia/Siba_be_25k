@@ -1,4 +1,7 @@
-USE casedb; /* UPDATED 2024-02-26 */
+USE casedb; /* UPDATED 2023-11-21 */
+
+-- DROP DATABASE IF EXISTS `casedb`;       /* These would not work other than for root or other able to create schemas */
+-- CREATE DATABASE IF NOT EXISTS `casedb`; /* These would not work other than for root or other able to create schemas */
 
 DROP TABLE IF EXISTS log_event;
 DROP TABLE IF EXISTS log_list;
@@ -26,8 +29,13 @@ DROP TABLE IF EXISTS User;
 DROP TABLE IF EXISTS Department;
 DROP TABLE IF EXISTS GlobalSetting;
 
-/* ------------------------------------------------------ */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
+USE casedb; /* UPDATED 2024-01-24 */
 
 /* --- 01 CREATE TABLES --- */
 
@@ -171,6 +179,8 @@ CREATE TABLE IF NOT EXISTS AllocRound (
     userId          INTEGER         NOT NULL,
     description     VARCHAR(16000)  NOT NULL,
     lastModified    TIMESTAMP       NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    lastCalcSuccs   TIMESTAMP       DEFAULT NULL,
+    lastCalcFail    TIMESTAMP       DEFAULT NULL,
     isAllocated     BOOLEAN     DEFAULT 0,
     processOn       BOOLEAN     DEFAULT 0,
     abortProcess    BOOLEAN     DEFAULT 0,
@@ -358,8 +368,13 @@ CREATE TABLE IF NOT EXISTS log_event (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
 
-/* ------------------------------------------------------ */
+USE casedb; /* UPDATED 2024-02-26 */
 
 /* INSERTS */
 /* --- Insert: GlobalSettings --- */
@@ -663,7 +678,7 @@ INSERT INTO Subject(name, groupSize, groupCount, sessionLength, sessionCount, ar
     ('Äänenkäyttö ja huolto / korrepetitiokoulutus', 4, 3, '01:00:00', 1, 10, 3015, 5004, 10004),
     ('Prima vista / korrepetitiokoulutus', 2, 6, '01:00:00', 1, 15, 3015, 5004, 10004),
     ('Musiikinhistorian lukupiiri', 10, 1, '01:00:00', 1 , 15, 3019, 5002, 10004),
-     ('Tohtoriseminaari (sävellys)', 17, 1, '02:00:00', 1, 30, 3019, 5002, 10003),
+    ('Tohtoriseminaari (sävellys)', 17, 1, '02:00:00', 1, 30, 3019, 5002, 10003),
     ('Musiikkiteknologian perusteet', 15, 1, '01:00:00', 1, 30, 3020, 5004, 10002),
     ('Johtamisen pedagogiikka -luentosarja', 10, 1, '02:00:00', 1, 20, 3018, 5002, 10001);
 
@@ -698,7 +713,6 @@ INSERT INTO SubjectEquipment(subjectId, equipmentId, priority) VALUES
     (4005, 2004, 600),
     (4024, 2004, 600),
     (4033, 2004, 600);
-
 
 /* --- Insert: AllocSubject * --- */
 INSERT INTO AllocSubject(subjectId, allocRoundId, isAllocated, allocatedDate, priority) VALUES
@@ -796,3 +810,10 @@ INSERT INTO AllocCurrentRoundUser(allocRoundId, userId) VALUES
 
 /* --- INSERT: LOG TYPE --- */
 INSERT INTO log_type(name) VALUES ("allocation");
+
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* -------------------------- END --------------------------- */
+/* ---------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+

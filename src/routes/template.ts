@@ -109,4 +109,19 @@ template.get(
   },
 );
 
+template.get(
+  '/program',
+  [authenticator, admin, planner, roleChecker, validate],
+  (req: Request, res: Response) => {
+    res
+      .status(200)
+      .header({
+        'Content-Type':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename=templaatti.xlsx',
+      })
+      .download('./templates/program_template.xlsx', 'program_templaatti.xlsx');
+  },
+);
+
 export default template;
