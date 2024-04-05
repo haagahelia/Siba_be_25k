@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS Building (
 CREATE TABLE IF NOT EXISTS SpaceType (
     id          INTEGER         NOT NULL AUTO_INCREMENT,
     name        VARCHAR(255)    NOT NULL,
+    acronym     VARCHAR(255)    NOT NULL,
     description VARCHAR(16000),
 
     PRIMARY KEY(id)

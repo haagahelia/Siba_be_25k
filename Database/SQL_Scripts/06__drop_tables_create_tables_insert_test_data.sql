@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS Building (
 CREATE TABLE IF NOT EXISTS SpaceType (
     id          INTEGER         NOT NULL AUTO_INCREMENT,
     name        VARCHAR(255)    NOT NULL,
+    acronym     VARCHAR(255)    NOT NULL,
     description VARCHAR(16000),
 
     PRIMARY KEY(id)
@@ -426,11 +427,11 @@ INSERT INTO `Building` (`name`, `description`) VALUES
 	('R-talo', 'Sibeliusakatemian konserttitalo');
 
 /* --- Insert: SpaceType --- */
-INSERT INTO SpaceType (`name`, `description`) VALUES
-    ('Studio', NULL),
-    ('Luentoluokka','Room for theory classes'),
-    ('Esitystila', NULL),
-    ('Musiikkiluokka', NULL);
+INSERT INTO SpaceType (`name`, `acronym`, `description`) VALUES
+    ('Studio', 'S', NULL),
+    ('Luentoluokka', 'L', 'Room for theory classes'),
+    ('Esitystila', 'E', NULL),
+    ('Musiikkiluokka', 'M' NULL);
 
 /* --- Insert: `Space` * --- */
 INSERT INTO `Space` (`name`, `area`, `personLimit`, `buildingId`, `availableFrom`, `availableTo`, `classesFrom`, `classesTo`, `info`, `spaceTypeId`) VALUES
