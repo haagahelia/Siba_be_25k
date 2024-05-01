@@ -43,6 +43,7 @@ space.get(
         's.spaceTypeId',
         'b.name AS buildingName',
         'st.name AS spaceTypeName',
+        'st.acronym AS spaceTypeAcronym',
       )
       .from('Space as s')
       .innerJoin('Building as b', 's.buildingId', 'b.id')
@@ -117,6 +118,7 @@ space.get(
         's.spaceTypeId',
         'b.name AS buildingName',
         'st.name AS spaceTypeName',
+        'st.acronym AS spaceTypeAcronym',
       )
       .from('Space as s')
       .innerJoin('Building as b', 's.buildingId', 'b.id')
