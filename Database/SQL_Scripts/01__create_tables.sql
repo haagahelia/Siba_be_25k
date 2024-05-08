@@ -172,6 +172,7 @@ CREATE TABLE IF NOT EXISTS Subject (
     programId       INTEGER         NOT NULL,
     spaceTypeId     INTEGER,
     allocRoundId    INTEGER         NOT NULL,
+    isNoisy         BOOLEAN Default 0,
 
     CONSTRAINT AK_Subject_unique_name_in_program UNIQUE (programId, allocRoundId, name),
 

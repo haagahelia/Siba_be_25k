@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS Subject (
     programId       INTEGER         NOT NULL,
     spaceTypeId     INTEGER,
     allocRoundId    INTEGER         NOT NULL,
+    isNoisy         BOOLEAN Default 0,
 
     CONSTRAINT AK_Subject_unique_name_in_program UNIQUE (programId, allocRoundId, name),
 
@@ -407,42 +408,42 @@ USE casedb; /* UPDATED 2023-11-05 */
 -- -----------------------------------------------------------
 -- Copy Alloc Round. Copies the allocRound subjects, but not yet the SubjectEquipment
 DELIMITER //
-CREATE OR REPLACE PROCEDURE copyAllocRound(IN allocRid1 INT, 
-                                        IN allocRoundName2 VARCHAR(255), 
+CREATE OR REPLACE PROCEDURE copyAllocRound(IN allocRid1 INT,
+                                        IN allocRoundName2 VARCHAR(255),
                                         IN allocRoundDescription2 VARCHAR(16000),
                                         IN creatorUserId2 INT,
                                         OUT allocRid2 INT)
 BEGIN
     INSERT INTO AllocRound
-        (`date`, name, isSeasonAlloc, userId, 
-        description, lastModified, isAllocated, 
+        (`date`, name, isSeasonAlloc, userId,
+        description, lastModified, isAllocated,
             processOn, abortProcess, requireReset)
     VALUES(
-        NULL, allocRoundName2, 0, creatorUserId2, 
+        NULL, allocRoundName2, 0, creatorUserId2,
         allocRoundDescription2, current_timestamp(), 0,
             0, 0, 0);
 
     SET allocRid2 = last_insert_id();
 
-    INSERT INTO Subject 
-                    (name,     groupSize,     groupCount,    sessionLength, 
+    INSERT INTO Subject
+                    (name,     groupSize,     groupCount,    sessionLength,
                        sessionCount,    area,    programId,    spaceTypeId, allocRoundId)
-    
-            SELECT s1.name, s1.groupSize, s1.groupCount, s1.sessionLength, 
+
+            SELECT s1.name, s1.groupSize, s1.groupCount, s1.sessionLength,
                     s1.sessionCount, s1.area, s1.programId, s1.spaceTypeId, allocRid2
             FROM Subject s1
                 WHERE (s1.allocRoundId = allocRid1);
-            
-    INSERT INTO SubjectEquipment  
+
+    INSERT INTO SubjectEquipment
                     (subjectId, equipmentId, priority, obligatory)
             SELECT s2.id, se1.equipmentId, se1.priority, se1.obligatory
-            
-            FROM Subject s2 JOIN Subject s1 ON s2.name = s1.name 
-                 JOIN SubjectEquipment se1 ON s1.id = se1.subjectId 
+
+            FROM Subject s2 JOIN Subject s1 ON s2.name = s1.name
+                 JOIN SubjectEquipment se1 ON s1.id = se1.subjectId
                  WHERE s2.allocRoundId = allocRid2 AND s1.allocRoundId = allocRid1;
-    
+
     SHOW ERRORS;
-    
+
 END;
 //
 DELIMITER ;
@@ -451,19 +452,19 @@ DELIMITER //
 CREATE OR REPLACE PROCEDURE test_copyAllocRound()
 BEGIN
     DECLARE allocRid               INTEGER        DEFAULT  10004;
-    DECLARE random                 DOUBLE         DEFAULT RAND(); 
+    DECLARE random                 DOUBLE         DEFAULT RAND();
     DECLARE allocRoundName         VARCHAR(255)   DEFAULT   CONCAT('Copied test alloc round',random);
     DECLARE allocRoundDescription  VARCHAR(16000) DEFAULT   'Alloc round based on 10004';
     DECLARE creatorUserId          INTEGER        DEFAULT   201;
     DECLARE allocRid2              INTEGER        DEFAULT -1;
 
-    CALL copyAllocRound(allocRid, 
-                        allocRoundName, 
+    CALL copyAllocRound(allocRid,
+                        allocRoundName,
                         allocRoundDescription,
                         creatorUserId,
                         allocRid2);
     SELECT allocRid2;
-                
+
 END;
 //
 DELIMITER ;
@@ -794,7 +795,7 @@ DELIMITER ;
 /* --- PROCEDURE 6 - B: Abort Allocation --- */
 DELIMITER //
 
-CREATE PROCEDURE IF NOT EXISTS abortAllocation(allocRid INT)	
+CREATE PROCEDURE IF NOT EXISTS abortAllocation(allocRid INT)
 BEGIN
 	DECLARE inProgress BOOLEAN DEFAULT FALSE;
 
