@@ -84,46 +84,51 @@ user.post(
       const [getUserId] = await db_knex('User')
         .select('id')
         .where('email', userData.email);
-      // seperated by split string function and add multiple dept??
-      // get dept id's
-      const departmentNames: string[] = userData.department.split('/');
 
-      // Loop through each department name
-      for (const departmentName of departmentNames) {
-        // Perform the database query to get the department ID
-        const [getDeptId] = await db_knex('Department')
-          .select('id')
-          .where('name', departmentName);
+      /// Split department names
+      const departmentNames: string[] = userData.department
+        ? userData.department.split('|')
+        : [];
 
-        // Log the results to the console for debugging
-        console.log('--------', getUserId, getDeptId, '--------');
+      // If departmentNames is empty, skip adding to userDepartmentPlanner
+      if (departmentNames.length > 0) {
+        for (const departmentName of departmentNames) {
+          const [getDeptId] = await db_knex('Department')
+            .select('id')
+            .where('name', departmentName);
 
-        // Push the user ID and department ID into the userDepartmentPlanner array
-        userDepartmentPlanner.push({
-          userId: getUserId.id,
-          departmentId: getDeptId.id,
-        });
+          // Push the user ID and department ID into the userDepartmentPlanner array
+          userDepartmentPlanner.push({
+            userId: getUserId?.id ?? 0,
+            departmentId: getDeptId?.id ?? 0,
+          });
+        }
       }
     }
-    // insert departmentplanner data
-    db_knex('Departmentplanner')
-      .insert(userDepartmentPlanner)
-      .then((result) => {
-        if (result.length === 0) {
-          requestErrorHandler(req, res, 'Nothing to insert');
-        } else {
-          successHandler(
-            req,
-            res,
-            { insertId: result[0] }, // Assuming auto-incremented ID
-            'Create successful - Subject',
-          );
-          logger.info(`deprtment planner ${userDepartmentPlanner} created`);
-        }
-      })
-      .catch((error) => {
-        dbErrorHandler(req, res, error, 'Oops! Create failed - Subject');
-      });
+    // If there are any records in userDepartmentPlanner, attempt to insert them
+    if (userDepartmentPlanner.length > 0) {
+      db_knex('Departmentplanner')
+        .insert(userDepartmentPlanner)
+        .then((result) => {
+          if (result.length === 0) {
+            requestErrorHandler(req, res, 'Nothing to insert');
+          } else {
+            successHandler(
+              req,
+              res,
+              { insertId: result[0] },
+              'Create successful - Subject',
+            );
+            logger.info(`Department planner ${userDepartmentPlanner} created`);
+          }
+        })
+        .catch((error) => {
+          dbErrorHandler(req, res, error, 'Oops! Create failed - Subject');
+        });
+    } else {
+      // If there are no departments specified in any userData, handle it accordingly
+      successHandler(req, res, {}, 'Create successful - Subject');
+    }
   },
 );
 
