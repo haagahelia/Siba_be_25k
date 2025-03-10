@@ -220,7 +220,7 @@ Column			| Datatype		| Keys		    | Description
 <u>id</u>		| INTEGER		| PK			|
 email			| VARCHAR(255)	|				|
 isAdmin			| BOOLEAN		|				| Whether user has admin rights
-password		| VARCHAR(255)	|				| user password
+passwordHash		| VARCHAR(255)	|				| user passwordHash
 isPlanner		| BOOLEAN   	|				| Whether user has planner rights
 isStatist		| BOOLEAN   	|				| Whether user has statist rights
 

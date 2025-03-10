@@ -37,9 +37,10 @@ user.post(
     console.log(
       `Register, clear text password from frontend: ${req.body.password}`,
     );
-    req.body.password = hashedPassword;
+    req.body.passwordHash = hashedPassword;
+    req.body.password = undefined;
     // REMOVE AFTER SOME TESTING!!! SECURITY!!!
-    console.log(`Register, password hashed for DB: ${req.body.password}`);
+    console.log(`Register, password hashed for DB: ${req.body.passwordHash}`);
     db_knex
       .insert(req.body)
       .into('User')
@@ -71,11 +72,11 @@ user.post(
     for (const userData of req.body) {
       // securing password
       const hashedPassword = bcrypt.hashSync(userData.password, 10);
-      userData.password = hashedPassword;
+      userData.passwordHash = hashedPassword;
       // inserting user data
       const dbInsertResult = await db_knex('User').insert({
         email: userData.email,
-        password: userData.password,
+        passwordHash: userData.passwordHash,
         isAdmin: userData.isAdmin.toString(),
         isPlanner: userData.isPlanner.toString(),
         isStatist: userData.isStatist.toString(),
@@ -179,12 +180,12 @@ user.post('/login', (req, res) => {
   console.log(`Login, password: ${req.body.password}`);
 
   db_knex('User')
-    .select('id', 'email', 'password', 'isAdmin', 'isPlanner', 'isStatist')
+    .select('id', 'email', 'passwordHash', 'isAdmin', 'isPlanner', 'isStatist')
     .where('email', req.body.email)
     .then((data) => {
       if (data.length === 1) {
         bcrypt
-          .compare(req.body.password, data[0].password)
+          .compare(req.body.password, data[0].passwordHash)
           .then((passwordCheck) => {
             if (!passwordCheck) {
               authenticationErrorHandler(
@@ -282,7 +283,7 @@ user.post('/reset-password/:id/:token', (req: Request, res: Response) => {
       } else {
         const hashedPassword = bcrypt.hashSync(password, 10);
         db_knex('User')
-          .update('password', hashedPassword)
+          .update('passwordHash', hashedPassword)
           .where('id', id)
           .then((data) => {
             if (data) {

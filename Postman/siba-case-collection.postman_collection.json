@@ -130,7 +130,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\":\"uusiuser2@gmail.com\",\"password\":\"$2a$10$f4cmsOUA/s1dOG/3ru3qVOkg5GbbK07Pz.f.n9HpeP6YBxXJMZBXi\",\"isAdmin\":\"1\",\"isPlanner\":\"0\",\"isStatist\":\"1\"}",
+              "raw": "{\"email\":\"uusiuser2@gmail.com\",\"passwordHash\":\"$2a$10$f4cmsOUA/s1dOG/3ru3qVOkg5GbbK07Pz.f.n9HpeP6YBxXJMZBXi\",\"isAdmin\":\"1\",\"isPlanner\":\"0\",\"isStatist\":\"1\"}",
               "options": {
                 "raw": {
                   "language": "json"
