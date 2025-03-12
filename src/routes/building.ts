@@ -109,7 +109,7 @@ building.get(
 building.post(
   '/',
   validateBuildingPost,
-  [authenticator, admin, roleChecker, validate],
+  [authenticator, admin, roleChecker],
   (req: Request, res: Response) => {
     db_knex('Building')
       .insert(req.body)
@@ -119,7 +119,7 @@ building.post(
           req,
           res,
           idArray,
-          'Adding a building, or multiple buildings was succesful',
+          'Adding a building, or multiple buildings was successful',
         );
       })
       .catch((error) => {
@@ -132,7 +132,7 @@ building.post(
 building.post(
   '/multi',
   validateBuildingMultiPost,
-  [authenticator, admin, roleChecker, validate],
+  [authenticator, admin, roleChecker],
   (req: Request, res: Response) => {
     db_knex('Building')
       .insert(req.body)
