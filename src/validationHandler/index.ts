@@ -27,6 +27,21 @@ export const validate = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+export const createValidator = (ValidationChains: ValidationChain[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Run all the validation chains
+    await Promise.all(ValidationChains.map((chain) => chain.run(req)));
+
+    // Check for validation errors
+    const validationResults = validationResult(req);
+    if (!validationResults.isEmpty()) {
+      validationErrorHandler(req, res, 'Validation', validationResults);
+      return;
+    }
+    next();
+  };
+};
+
 export const timeFormatString: string = '%H:%i'; // 23:25
 export const timestampFormatString: string = '%a %x-%m-%d %H:%i","fi_FI';
 // "Wed 2023-12-27 23:59"
