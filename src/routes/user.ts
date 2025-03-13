@@ -38,7 +38,8 @@ user.post(
       `Register, clear text password from frontend: ${req.body.password}`,
     );
     req.body.passwordHash = hashedPassword;
-    req.body.password = undefined;
+    // biome-ignore lint: Not expecting perf probs, single obj manipulated, no loop
+    delete req.body.password; // req.body.password = undefined;
     // REMOVE AFTER SOME TESTING!!! SECURITY!!!
     console.log(`Register, password hashed for DB: ${req.body.passwordHash}`);
     db_knex
