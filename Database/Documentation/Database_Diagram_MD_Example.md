@@ -29,7 +29,7 @@ erDiagram
     User {
         int id PK
         varchar email UK
-        varchar password
+        varchar passwordHash
         tinyint isAdmin
         tinyint isPlanner
         tinyint isStatist

@@ -118,3 +118,5 @@ build
 
 # MS Office temp files
 ~$*
+
+ssl/

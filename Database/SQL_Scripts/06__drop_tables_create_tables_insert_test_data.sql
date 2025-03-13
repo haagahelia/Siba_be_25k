@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS Department (
 CREATE TABLE IF NOT EXISTS User (
     id          INTEGER                 NOT NULL AUTO_INCREMENT,
     email       VARCHAR(255)    UNIQUE  NOT NULL,
-    password    VARCHAR(255)            NOT NULL,
+    passwordHash    VARCHAR(255)            NOT NULL,
     isAdmin     BOOLEAN                 NOT NULL DEFAULT 0,
     isPlanner   BOOLEAN                 NOT NULL DEFAULT 0,
     isStatist   BOOLEAN                 NOT NULL DEFAULT 0,
@@ -412,7 +412,7 @@ INSERT INTO Department(name, description) VALUES
 
 /* --- Insert: `User` --- */
 /* SECURITY: Change these before deployment */
-INSERT INTO `User`(email, password, isAdmin, isPlanner, isStatist) VALUES
+INSERT INTO `User`(email, passwordHash, isAdmin, isPlanner, isStatist) VALUES
     ('admin','$2a$10$My5c7qZPRzp2p5QpgzQ0kOt5Au1xdwIidJDegsEWpntwAWceUjdWa',1,0,0),
     ('planner','$2a$10$mKf/VHzIGyIfADKHFACEBuYTb0IbPv6sE/FqlsbLAKgfelMWwsnEm',0,1,0),
     ('statist','$2a$10$3oFjcGMj3Zq.91PkbGuL9Oo1zowAU9WFNNWyYA018Rff5BpCEmQ8y',0,0,1),
